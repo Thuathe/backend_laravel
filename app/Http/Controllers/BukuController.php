@@ -5,23 +5,31 @@ namespace App\Http\Controllers;
 use App\Models\Buku;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 class BukuController extends Controller
 {
     public function index() {
         return Buku::all();
     }
-
 public function store(Request $request)
 {
-    $data = $request->all();
+    $url = null;
 
     if ($request->hasFile('cover')) {
-        $data['cover'] = $request->file('cover')->store('covers', 'public');
+        $upload = Cloudinary::upload($request->file('cover')->getRealPath());
+        $url = $upload->getSecurePath(); // URL gambar
     }
 
-    Buku::create($data);
-    return response()->json(['message' => 'Buku ditambahkan']);
+    $buku = Buku::create([
+        'judul' => $request->judul,
+        'penulis' => $request->penulis,
+        'cover' => $url,
+    ]);
+
+    return response()->json(['message' => 'Buku ditambahkan', 'data' => $buku]);
 }
+
+
 
     public function show($id) {
         return Buku::findOrFail($id);
@@ -31,23 +39,18 @@ public function store(Request $request)
 public function update(Request $request, $id)
 {
     $buku = Buku::findOrFail($id);
-    $data = $request->all();
+    $data = $request->only('judul', 'penulis');
 
     if ($request->hasFile('cover')) {
-        // Hapus gambar lama dulu
-        if ($buku->cover && Storage::disk('public')->exists($buku->cover)) {
-            Storage::disk('public')->delete($buku->cover);
-        }
-
-        // Simpan gambar baru
-        $data['cover'] = $request->file('cover')->store('covers', 'public');
+        $upload = Cloudinary::upload($request->file('cover')->getRealPath());
+        $data['cover'] = $upload->getSecurePath(); // ganti cover
     }
 
     $buku->update($data);
 
     return response()->json(['message' => 'Buku diupdate']);
-    
 }
+
 
 
 public function destroy($id)
